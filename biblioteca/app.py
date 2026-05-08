@@ -6,6 +6,10 @@ app = Flask(__name__)
 livros = {}
 usuarios = {}
 
+@app.route('/')
+def index():
+    return "API da Biblioteca Online funcionando!"
+    
 @app.route('/livros', methods=['POST'])
 def cadastrar_livro():
     dados = request.json
