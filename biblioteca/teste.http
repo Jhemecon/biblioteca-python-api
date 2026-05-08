@@ -5,9 +5,9 @@ POST {{url}}/livros
 Content-Type: application/json
 
 {
-  "titulo": "Clean Code",
-  "autor": "Robert Martin",
-  "isbn": "123456"
+  "titulo": "",
+  "autor": "",
+  "isbn": ""
 }
 
 ### 2. Listar Livros (Para mostrar que salvou)
@@ -18,8 +18,8 @@ POST {{url}}/usuarios
 Content-Type: application/json
 
 {
-  "nome": "João",
-  "id_usuario": "001"
+  "nome": "",
+  "id_usuario": ""
 }
 
 ### 4. Realizar Empréstimo
@@ -27,8 +27,8 @@ POST {{url}}/emprestimos
 Content-Type: application/json
 
 {
-  "isbn": "123456",
-  "id_usuario": "001"
+  "isbn": "",
+  "id_usuario": ""
 }
 
 ### 5. Tentar Emprestar de novo (Para mostrar o erro 400 - Livro Indisponível)
@@ -36,8 +36,8 @@ POST {{url}}/emprestimos
 Content-Type: application/json
 
 {
-  "isbn": "123456",
-  "id_usuario": "001"
+  "isbn": "",
+  "id_usuario": ""
 }
 
 ### 6. Devolver Livro
@@ -45,8 +45,8 @@ POST {{url}}/devolver
 Content-Type: application/json
 
 {
-  "isbn": "123456",
-  "id_usuario": "001"
+  "isbn": "",
+  "id_usuario": ""
 }
 
 ### 7. Listar Livros Após Devolução
