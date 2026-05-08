@@ -37,3 +37,28 @@ class Usuario:
             self.livros_emprestados.append(livro)
             return True
         return False
+
+    def devolver_livro(self, livro):
+        if livro in self.livros_emprestados:
+            livro.devolver()
+            self.livros_emprestados.remove(livro)
+            return True
+        return False
+
+
+class ValidadorEmprestimo:
+    def __init__(self, livros, usuarios):
+        self.livros = livros
+        self.usuarios = usuarios
+
+    def validar_livro_e_usuario(self, isbn, id_usuario):
+        livro_encontrado = self.livros.get(isbn)
+        usuario_encontrado = self.usuarios.get(id_usuario)
+
+        if not livro_encontrado:
+            return None, None, {"erro": "Livro não encontrado"}, 404
+
+        if not usuario_encontrado:
+            return None, None, {"erro": "Usuário não encontrado"}, 404
+
+        return livro_encontrado, usuario_encontrado, None, None
