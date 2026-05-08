@@ -1,18 +1,18 @@
 # 📚 Biblioteca Online — API REST em Python
 
-> API REST para gerenciamento de uma biblioteca: cadastro de livros, usuários e controle de empréstimos.
+> API REST para gerenciamento de uma biblioteca: cadastro de livros, usuários e controle de empréstimos e devoluções.
 
 ---
 
 ## 📋 Sobre o Projeto
 
-Este projeto implementa uma **API REST para biblioteca online** utilizando **Flask** e conceitos de **Programação Orientada a Objetos**. A API permite cadastrar livros e usuários, além de gerenciar empréstimos, controlando a disponibilidade de cada exemplar.
+Este projeto implementa uma **API REST para biblioteca online** utilizando **Flask** e conceitos de **Programação Orientada a Objetos**. A API permite cadastrar livros e usuários, além de gerenciar empréstimos e devoluções, controlando a disponibilidade de cada exemplar.
 
 ### 🎯 Objetivos
 
 - Demonstrar a aplicação prática de **APIs REST** com Flask
 - Implementar **Programação Orientada a Objetos** com encapsulamento
-- Controlar o fluxo de **empréstimos** com validações de negócio
+- Controlar o fluxo de **empréstimos e devoluções** com validações de negócio
 - Organizar o projeto com separação entre **rotas** e **modelos**
 
 ---
@@ -21,10 +21,11 @@ Este projeto implementa uma **API REST para biblioteca online** utilizando **Fla
 
 ### Programação Orientada a Objetos
 
-O projeto utiliza duas classes principais com responsabilidades bem definidas:
+O projeto utiliza três classes principais com responsabilidades bem definidas:
 
 - **`Livro`** — Representa um exemplar com controle de disponibilidade via atributo privado (`__disponivel`)
 - **`Usuario`** — Representa um leitor com sua lista de livros emprestados
+- **`ValidadorEmprestimo`** — Centraliza a validação de livro e usuário antes de operações de empréstimo ou devolução
 
 ### Encapsulamento
 
@@ -40,6 +41,7 @@ As rotas seguem os princípios REST com uso adequado de métodos HTTP e códigos
 | `GET` | `/livros` | Listar livros | 200 |
 | `POST` | `/usuarios` | Cadastrar usuário | 201 / 400 |
 | `POST` | `/emprestimos` | Realizar empréstimo | 200 / 400 / 404 |
+| `POST` | `/devolver` | Devolver livro | 200 / 400 / 404 |
 
 ---
 
@@ -51,7 +53,7 @@ biblioteca-python-api/
 ├── README.md                  # Este arquivo
 └── biblioteca/
     ├── app.py                 # Rotas e configuração Flask
-    ├── models.py              # Classes Livro e Usuario
+    ├── models.py              # Classes Livro, Usuario e ValidadorEmprestimo
     └── teste.http             # Arquivo de testes das rotas
 ```
 
@@ -61,7 +63,7 @@ biblioteca-python-api/
 Arquivo principal da aplicação que:
 - Configura a aplicação Flask
 - Define as rotas e métodos HTTP
-- Valida os dados recebidos nas requisições
+- Utiliza o `ValidadorEmprestimo` para validar livro e usuário antes de cada operação
 - Retorna respostas JSON com os códigos de status adequados
 
 #### 🔹 `models.py`
@@ -72,6 +74,8 @@ Modelos de dados com Orientação a Objetos:
 - `livro.to_dict()` — Serializa o objeto para JSON
 - `Usuario(nome, id_usuario)` — Cria um usuário com lista de empréstimos vazia
 - `usuario.pegar_emprestado(livro)` — Tenta realizar o empréstimo de um livro
+- `usuario.devolver_livro(livro)` — Tenta devolver um livro previamente emprestado
+- `ValidadorEmprestimo(livros, usuarios)` — Valida a existência de livro e usuário; utilizado pelas rotas `/emprestimos` e `/devolver`
 
 #### 🔹 `teste.http`
 Arquivo de testes HTTP para todas as rotas, utilizado com a extensão **REST Client** do VS Code. Os campos das requisições estão com aspas vazias `""` para serem preenchidos antes de executar.
@@ -164,6 +168,8 @@ Content-Type: application/json
 3. **Cadastrar um Usuário** — preencha `nome` e `id_usuario`
 4. **Realizar Empréstimo** — use o mesmo `isbn` e `id_usuario` dos passos anteriores
 5. **Tentar Emprestar de Novo** — sem alterar nada, execute novamente o passo 4 para ver o erro `400 - Livro Indisponível`
+6. **Devolver Livro** — use o mesmo `isbn` e `id_usuario` do empréstimo
+7. **Listar Livros Após Devolução** — confirme que o livro voltou a estar disponível
 
 ---
 
@@ -246,6 +252,36 @@ Content-Type: application/json
 { "erro": "Livro indisponível" }
 ```
 
+### 6. Devolver Livro
+```http
+POST /devolver
+Content-Type: application/json
+
+{
+  "isbn": "978-8533613379",
+  "id_usuario": "user-001"
+}
+```
+**Resposta:** `200 OK`
+```json
+{ "mensagem": "Livro devolvido com sucesso!" }
+```
+
+### 7. Tentar Devolver Livro Não Emprestado
+```http
+POST /devolver
+Content-Type: application/json
+
+{
+  "isbn": "978-8533613379",
+  "id_usuario": "user-001"
+}
+```
+**Resposta:** `400 Bad Request`
+```json
+{ "erro": "Livro não foi emprestado por este usuário" }
+```
+
 ---
 
 ## 💡 Casos de Teste Sugeridos
@@ -274,6 +310,18 @@ Emprestar o mesmo livro para dois usuários diferentes
 Resultado esperado: 200 no primeiro, 400 no segundo
 ```
 
+### Teste 5: Devolução bem-sucedida
+```
+Emprestar um livro e em seguida devolvê-lo
+Resultado esperado: 200 em ambos; disponivel volta a ser true na listagem
+```
+
+### Teste 6: Devolução por usuário errado
+```
+Tentar devolver um livro que foi emprestado por outro usuário
+Resultado esperado: 400 Bad Request — "Livro não foi emprestado por este usuário"
+```
+
 ---
 
 ## 🔬 Detalhes de Implementação
@@ -287,8 +335,13 @@ Os dados são armazenados em dicionários Python (`livros` e `usuarios`) em temp
 Antes de qualquer operação, a API verifica:
 - **Campos obrigatórios** presentes no corpo da requisição
 - **Duplicidade** de ISBN e ID de usuário no cadastro
-- **Existência** do livro e do usuário antes do empréstimo
+- **Existência** do livro e do usuário antes do empréstimo ou devolução
 - **Disponibilidade** do livro antes de concluir o empréstimo
+- **Vínculo** entre usuário e livro antes de concluir a devolução
+
+### Validador Centralizado
+
+A classe `ValidadorEmprestimo` recebe as referências dos dicionários `livros` e `usuarios` no momento da instanciação e expõe o método `validar_livro_e_usuario(isbn, id_usuario)`. Esse método é reutilizado pelas rotas `/emprestimos` e `/devolver`, evitando duplicação de lógica.
 
 ### Serialização
 
