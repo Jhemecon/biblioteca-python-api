@@ -22,7 +22,7 @@ class Livro:
             "titulo": self.titulo,
             "autor": self.autor,
             "isbn": self.isbn,
-            "disponivel": self.__disponivel
+            "disponivel": self.esta_disponivel()
         }
 
 
