@@ -1,10 +1,11 @@
 from flask import Flask, jsonify, request
-from models import Livro, Usuario
+from models import Livro, Usuario, ValidadorEmprestimo
 
 app = Flask(__name__)
 
 livros = {}
 usuarios = {}
+validador = ValidadorEmprestimo(livros, usuarios)
 
 @app.route('/')
 def index():
@@ -52,22 +53,35 @@ def cadastrar_usuario():
 def emprestar_livro():
     dados = request.json
     
-    isbn = dados.get('isbn')
-    id_usuario = dados.get('id_usuario')
-
-    livro_encontrado = livros.get(isbn)
-    usuario_encontrado = usuarios.get(id_usuario)
-
-    if not livro_encontrado:
-        return jsonify({"erro": "Livro não encontrado"}), 404
-
-    if not usuario_encontrado:
-        return jsonify({"erro": "Usuário não encontrado"}), 404
+    livro_encontrado, usuario_encontrado, erro, status = validador.validar_livro_e_usuario(
+        dados.get('isbn'), 
+        dados.get('id_usuario')
+    )
+    
+    if erro:
+        return jsonify(erro), status
 
     if usuario_encontrado.pegar_emprestado(livro_encontrado):
         return jsonify({"mensagem": "Empréstimo realizado!"}), 200
 
     return jsonify({"erro": "Livro indisponível"}), 400
+
+@app.route('/devolver', methods=['POST'])
+def devolver_livro():
+    dados = request.json
+    
+    livro_encontrado, usuario_encontrado, erro, status = validador.validar_livro_e_usuario(
+        dados.get('isbn'), 
+        dados.get('id_usuario')
+    )
+    
+    if erro:
+        return jsonify(erro), status
+
+    if usuario_encontrado.devolver_livro(livro_encontrado):
+        return jsonify({"mensagem": "Livro devolvido com sucesso!"}), 200
+
+    return jsonify({"erro": "Livro não foi emprestado por este usuário"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
