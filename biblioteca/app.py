@@ -3,95 +3,67 @@ from models import Livro, Usuario
 
 app = Flask(__name__)
 
-livros = []
-usuarios = []
-
+livros = {}
+usuarios = {}
 
 @app.route('/livros', methods=['POST'])
 def cadastrar_livro():
-
     dados = request.json
+    
+    campos_obrigatorios = ['titulo', 'autor', 'isbn']
+    if not dados or not all(campo in dados for campo in campos_obrigatorios):
+        return jsonify({"erro": "Dados incompletos. Informe titulo, autor e isbn."}), 400
 
-    livro = Livro(
-        dados['titulo'],
-        dados['autor'],
-        dados['isbn']
-    )
+    isbn = dados['isbn']
+    if isbn in livros:
+        return jsonify({"erro": "Livro já cadastrado"}), 400
 
-    livros.append(livro)
+    livro = Livro(dados['titulo'], dados['autor'], isbn)
+    livros[isbn] = livro
 
-    return jsonify({
-        "mensagem": "Livro cadastrado!"
-    })
-
+    return jsonify({"mensagem": "Livro cadastrado!"}), 201
 
 @app.route('/livros', methods=['GET'])
 def listar_livros():
-
-    lista = []
-
-    for livro in livros:
-        lista.append(livro.to_dict())
-
+    lista = [livro.to_dict() for livro in livros.values()]
     return jsonify(lista)
-
 
 @app.route('/usuarios', methods=['POST'])
 def cadastrar_usuario():
-
     dados = request.json
+    
+    if not dados or 'nome' not in dados or 'id_usuario' not in dados:
+        return jsonify({"erro": "Nome e id_usuario são obrigatórios"}), 400
 
-    usuario = Usuario(
-        dados['nome'],
-        dados['id_usuario']
-    )
+    id_usuario = dados['id_usuario']
+    if id_usuario in usuarios:
+        return jsonify({"erro": "Usuário já existe"}), 400
 
-    usuarios.append(usuario)
+    usuario = Usuario(dados['nome'], id_usuario)
+    usuarios[id_usuario] = usuario
 
-    return jsonify({
-        "mensagem": "Usuário cadastrado!"
-    })
-
+    return jsonify({"mensagem": "Usuário cadastrado!"}), 201
 
 @app.route('/emprestimos', methods=['POST'])
 def emprestar_livro():
-
     dados = request.json
+    
+    isbn = dados.get('isbn')
+    id_usuario = dados.get('id_usuario')
 
-    isbn = dados['isbn']
-    id_usuario = dados['id_usuario']
+    livro_encontrado = livros.get(isbn)
+    usuario_encontrado = usuarios.get(id_usuario)
 
-    livro_encontrado = None
-    usuario_encontrado = None
+    if not livro_encontrado:
+        return jsonify({"erro": "Livro não encontrado"}), 404
 
-    for livro in livros:
-        if livro.isbn == isbn:
-            livro_encontrado = livro
-
-    for usuario in usuarios:
-        if usuario.id_usuario == id_usuario:
-            usuario_encontrado = usuario
-
-    if livro_encontrado is None:
-        return jsonify({
-            "erro": "Livro não encontrado"
-        }), 404
-
-    if usuario_encontrado is None:
-        return jsonify({
-            "erro": "Usuário não encontrado"
-        }), 404
+    if not usuario_encontrado:
+        return jsonify({"erro": "Usuário não encontrado"}), 404
 
     if usuario_encontrado.pegar_emprestado(livro_encontrado):
+        return jsonify({"mensagem": "Empréstimo realizado!"}), 200
 
-        return jsonify({
-            "mensagem": "Empréstimo realizado!"
-        })
-
-    return jsonify({
-        "erro": "Livro indisponível"
-    }), 400
-
+    return jsonify({"erro": "Livro indisponível"}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)
